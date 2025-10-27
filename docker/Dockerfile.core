@@ -1,0 +1,61 @@
+# VabHub 核心快速启动容器
+# 基于 MoviePilot 模式，支持快速部署和组件按需安装
+
+FROM python:3.11-slim as core
+
+# 设置环境变量
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    VABHUB_VERSION=1.0.0 \
+    VABHUB_ENV=production
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    nginx \
+    supervisor \
+    curl \
+    wget \
+    git \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# 创建工作目录
+WORKDIR /app
+
+# 复制核心代码
+COPY app/ ./app/
+COPY config/ ./config/
+COPY requirements.txt ./
+
+# 安装 Python 依赖
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 创建必要的目录
+RUN mkdir -p /app/logs /app/data /app/plugins /app/temp
+
+# 复制部署脚本
+COPY docker/entrypoint.sh /entrypoint.sh
+COPY docker/supervisor.conf /etc/supervisor/conf.d/supervisor.conf
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+
+# 设置权限
+RUN chmod +x /entrypoint.sh \
+    && chown -R www-data:www-data /app \
+    && chmod -R 755 /app
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8090/health || exit 1
+
+# 暴露端口
+EXPOSE 8090
+
+# 设置启动命令
+CMD ["/entrypoint.sh"]
+
+# 标签信息
+LABEL maintainer="VabHub Team <team@vabhub.com>" \
+      description="VabHub Core - Media Management System" \
+      version="1.0.0" \
+      org.opencontainers.image.source="https://github.com/vabhub/vabhub-core"

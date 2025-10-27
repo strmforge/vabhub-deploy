@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # 后端核心服务（使用官方镜像）
+  vabhub-core:
+    image: vabhub/vabhub-core:latest
+    container_name: vabhub-core
+    ports:
+      - "8090:8090"
+    volumes:
+      - vabhub_config:/app/config
+      - vabhub_data:/app/data
+      - vabhub_logs:/app/logs
+    environment:
+      - VABHUB_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=vabhub
+      - DB_USER=vabhub
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端界面服务（使用官方镜像）
+  vabhub-frontend:
+    image: vabhub/vabhub-frontend:latest
+    container_name: vabhub-frontend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_BASE_URL=http://vabhub-core:8090
+    depends_on:
+      - vabhub-core
+    restart: unless-stopped
+
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: vabhub-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=vabhub
+      - POSTGRES_USER=vabhub
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vabhub"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: vabhub-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 插件服务（可选）
+  vabhub-plugins:
+    image: vabhub/vabhub-plugins:latest
+    container_name: vabhub-plugins
+    volumes:
+      - vabhub_plugins:/app/plugins
+    environment:
+      - VABHUB_CORE_URL=http://vabhub-core:8090
+    depends_on:
+      - vabhub-core
+    restart: unless-stopped
+
+  # 监控服务（可选）
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vabhub-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vabhub-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  vabhub_config:
+  vabhub_data:
+  vabhub_logs:
+  vabhub_plugins:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: vabhub-network

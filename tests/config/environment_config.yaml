@@ -1,0 +1,230 @@
+# VabHub 测试环境配置
+# 定义各种测试环境的配置参数
+
+environments:
+  unit:
+    description: "单元测试环境"
+    services:
+      - database
+      - redis
+    docker_compose: "docker-compose.unit.yml"
+    timeout: 300
+    ports:
+      database: 5432
+      redis: 6379
+    health_checks:
+      database: "pg_isready -U test_user -d vabhub_test"
+      redis: "redis-cli ping"
+    
+  integration:
+    description: "集成测试环境"
+    services:
+      - database
+      - redis
+      - api
+      - frontend
+    docker_compose: "docker-compose.integration.yml"
+    timeout: 600
+    ports:
+      database: 5432
+      redis: 6379
+      api: 8000
+      frontend: 3000
+    health_checks:
+      database: "pg_isready -U test_user -d vabhub_test"
+      redis: "redis-cli ping"
+      api: "curl -f http://localhost:8000/health"
+      frontend: "curl -f http://localhost:3000"
+    
+  e2e:
+    description: "端到端测试环境"
+    services:
+      - database
+      - redis
+      - api
+      - frontend
+      - test-browser
+    docker_compose: "docker-compose.e2e.yml"
+    timeout: 900
+    ports:
+      database: 5432
+      redis: 6379
+      api: 8000
+      frontend: 3000
+      test-browser: 4444
+    health_checks:
+      database: "pg_isready -U test_user -d vabhub_test"
+      redis: "redis-cli ping"
+      api: "curl -f http://localhost:8000/health"
+      frontend: "curl -f http://localhost:3000"
+      test-browser: "curl -f http://localhost:4444/wd/hub/status"
+
+# 服务配置
+services:
+  database:
+    image: "postgres:13"
+    environment:
+      POSTGRES_DB: "vabhub_test"
+      POSTGRES_USER: "test_user"
+      POSTGRES_PASSWORD: "test_password"
+    volumes:
+      - "test_db_data:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d vabhub_test"]
+      interval: "10s"
+      timeout: "5s"
+      retries: 3
+    
+  redis:
+    image: "redis:6"
+    volumes:
+      - "test_redis_data:/data"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: "10s"
+      timeout: "5s"
+      retries: 3
+    
+  api:
+    build:
+      context: "../VabHub-Core"
+      dockerfile: "Dockerfile.test"
+    environment:
+      DATABASE_URL: "postgresql://test_user:test_password@database:5432/vabhub_test"
+      REDIS_URL: "redis://redis:6379"
+      ENVIRONMENT: "test"
+      LOG_LEVEL: "DEBUG"
+    depends_on:
+      database:
+        condition: "service_healthy"
+      redis:
+        condition: "service_healthy"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: "30s"
+      timeout: "10s"
+      retries: 3
+    
+  frontend:
+    build:
+      context: "../VabHub-Frontend"
+      dockerfile: "Dockerfile.test"
+    environment:
+      API_URL: "http://api:8000"
+      NODE_ENV: "test"
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: "30s"
+      timeout: "10s"
+      retries: 3
+    
+  test-browser:
+    image: "selenium/standalone-chrome:latest"
+    environment:
+      SE_NODE_MAX_SESSIONS: 5
+      SE_NODE_OVERRIDE_MAX_SESSIONS: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+      interval: "30s"
+      timeout: "10s"
+      retries: 3
+
+# 网络配置
+networks:
+  test_network:
+    driver: "bridge"
+    ipam:
+      config:
+        - subnet: "172.20.0.0/16"
+
+# 卷配置
+volumes:
+  test_db_data:
+    driver: "local"
+  test_redis_data:
+    driver: "local"
+
+# 资源限制
+resource_limits:
+  database:
+    memory: "512M"
+    cpus: "0.5"
+  redis:
+    memory: "256M"
+    cpus: "0.25"
+  api:
+    memory: "1G"
+    cpus: "1.0"
+  frontend:
+    memory: "512M"
+    cpus: "0.5"
+  test-browser:
+    memory: "2G"
+    cpus: "1.0"
+
+# 环境变量配置
+environment_variables:
+  common:
+    LOG_LEVEL: "INFO"
+    DEBUG: "false"
+    
+  test:
+    LOG_LEVEL: "DEBUG"
+    DEBUG: "true"
+    TEST_MODE: "true"
+    
+  development:
+    LOG_LEVEL: "DEBUG"
+    DEBUG: "true"
+    
+  production:
+    LOG_LEVEL: "WARNING"
+    DEBUG: "false"
+
+# 部署配置
+deployment:
+  strategy: "rolling_update"
+  update_config:
+    parallelism: 1
+    delay: "10s"
+    failure_action: "rollback"
+  
+  rollback_config:
+    parallelism: 1
+    delay: "0s"
+    failure_action: "pause"
+  
+  restart_policy:
+    condition: "any"
+    delay: "5s"
+    max_attempts: 3
+    window: "120s"
+
+# 监控配置
+monitoring:
+  metrics:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+  
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+  
+  health_check:
+    interval: "30s"
+    timeout: "10s"
+    retries: 3
+    start_period: "60s"
+
+# 清理配置
+cleanup:
+  auto_cleanup: true
+  cleanup_delay: "300"  # 5 minutes
+  remove_volumes: true
+  remove_networks: true
+  remove_images: false

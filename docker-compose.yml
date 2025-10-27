@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  # 后端核心服务
+  vabhub-core:
+    build:
+      context: ../VabHub-Core
+      dockerfile: Dockerfile
+    container_name: vabhub-core
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - VABHUB_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=vabhub
+      - DB_USER=vabhub
+      - DB_PASSWORD=${DB_PASSWORD:-vabhub123}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端界面服务
+  vabhub-frontend:
+    build:
+      context: ../VabHub-Frontend
+      dockerfile: Dockerfile
+    container_name: vabhub-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8090
+    depends_on:
+      - vabhub-core
+    restart: unless-stopped
+
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: vabhub-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=vabhub
+      - POSTGRES_USER=vabhub
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-vabhub123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vabhub"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: vabhub-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx 反向代理（可选）
+  nginx:
+    image: nginx:alpine
+    container_name: vabhub-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/ssl/certs
+    depends_on:
+      - vabhub-core
+      - vabhub-frontend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: vabhub-network

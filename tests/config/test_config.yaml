@@ -1,0 +1,169 @@
+# VabHub 测试配置
+# 定义各种测试套件的配置参数
+
+test_suites:
+  unit:
+    description: "单元测试套件"
+    patterns:
+      - "tests/unit/test_*.py"
+    timeout: 300
+    parallel: true
+    
+  integration:
+    description: "集成测试套件"
+    patterns:
+      - "tests/integration/test_*.py"
+    requires:
+      - docker
+    timeout: 600
+    parallel: false
+    
+  e2e:
+    description: "端到端测试套件"
+    patterns:
+      - "tests/e2e/test_*.py"
+    requires:
+      - selenium
+      - test_environment
+    timeout: 1200
+    parallel: false
+    
+  performance:
+    description: "性能测试套件"
+    patterns:
+      - "tests/performance/test_*.py"
+    requires:
+      - locust
+    timeout: 1800
+    parallel: false
+
+# 测试环境配置
+environments:
+  unit:
+    description: "单元测试环境"
+    services:
+      - database
+      - redis
+    docker_compose: "docker-compose.unit.yml"
+    timeout: 300
+    
+  integration:
+    description: "集成测试环境"
+    services:
+      - database
+      - redis
+      - api
+      - frontend
+    docker_compose: "docker-compose.integration.yml"
+    timeout: 600
+    
+  e2e:
+    description: "端到端测试环境"
+    services:
+      - database
+      - redis
+      - api
+      - frontend
+      - test-browser
+    docker_compose: "docker-compose.e2e.yml"
+    timeout: 900
+
+# 测试数据配置
+test_data:
+  users:
+    - username: "test_user_1"
+      email: "test1@example.com"
+      password: "testpassword123"
+    - username: "test_user_2"
+      email: "test2@example.com"
+      password: "testpassword456"
+  
+  api_endpoints:
+    health: "/health"
+    users: "/api/users"
+    auth: "/api/auth"
+    config: "/api/config"
+
+# 性能测试配置
+performance:
+  load_test:
+    users: 100
+    spawn_rate: 10
+    duration: "5m"
+  
+  stress_test:
+    users: 500
+    spawn_rate: 50
+    duration: "10m"
+  
+  endurance_test:
+    users: 50
+    spawn_rate: 5
+    duration: "1h"
+
+# 安全测试配置
+security:
+  scan_types:
+    - "sql_injection"
+    - "xss"
+    - "csrf"
+    - "authentication"
+    - "authorization"
+  
+  scan_targets:
+    - "api_endpoints"
+    - "frontend_pages"
+    - "database_queries"
+
+# 报告配置
+reporting:
+  formats:
+    - "text"
+    - "html"
+    - "json"
+    - "junit"
+  
+  output_directory: "reports"
+  
+  thresholds:
+    unit_test_coverage: 80
+    integration_test_coverage: 70
+    e2e_test_coverage: 60
+    performance_threshold: 2000  # ms
+    security_score: 90
+
+# 通知配置
+notifications:
+  email:
+    enabled: false
+    recipients: []
+    smtp_server: ""
+  
+  slack:
+    enabled: false
+    webhook_url: ""
+    channel: "#testing"
+  
+  webhook:
+    enabled: false
+    url: ""
+
+# 环境特定配置
+environments_config:
+  development:
+    base_url: "http://localhost:8000"
+    frontend_url: "http://localhost:3000"
+    database_url: "postgresql://test_user:test_password@localhost:5432/vabhub_test"
+    redis_url: "redis://localhost:6379"
+  
+  staging:
+    base_url: "https://staging.vabhub.com"
+    frontend_url: "https://staging.vabhub.com"
+    database_url: "postgresql://staging_user:staging_password@staging-db.vabhub.com:5432/vabhub_staging"
+    redis_url: "redis://staging-redis.vabhub.com:6379"
+  
+  production:
+    base_url: "https://vabhub.com"
+    frontend_url: "https://vabhub.com"
+    database_url: "postgresql://prod_user:prod_password@prod-db.vabhub.com:5432/vabhub_prod"
+    redis_url: "redis://prod-redis.vabhub.com:6379"

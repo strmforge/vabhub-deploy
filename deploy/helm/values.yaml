@@ -1,0 +1,123 @@
+# 默认配置值
+
+# 副本数量
+replicaCount: 3
+
+# 镜像配置
+image:
+  repository: media-renamer
+  tag: "2.0.0"
+  pullPolicy: IfNotPresent
+
+# 服务配置
+service:
+  type: ClusterIP
+  port: 8000
+
+# 入口配置
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: media-renamer.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# 资源配置
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# 自动扩缩容配置
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# 数据库配置
+postgresql:
+  enabled: true
+  postgresqlUsername: user
+  postgresqlPassword: pass
+  postgresqlDatabase: media_renamer
+  persistence:
+    enabled: true
+    size: 10Gi
+
+# Redis配置
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+
+# 应用配置
+config:
+  app:
+    name: "MediaRenamer Enhanced"
+    version: "2.0.0"
+    debug: false
+  
+  database:
+    host: "postgresql"
+    port: 5432
+    name: "media_renamer"
+  
+  redis:
+    host: "redis-master"
+    port: 6379
+    db: 0
+  
+  web:
+    host: "0.0.0.0"
+    port: 8000
+    debug: false
+  
+  pt:
+    max_concurrent_downloads: 5
+    download_path: "/downloads"
+    auto_cleanup: true
+  
+  ai:
+    recognition_enabled: true
+    search_enabled: true
+    recommendation_enabled: false
+  
+  workflow:
+    auto_start: true
+    max_parallel: 3
+  
+  plugin:
+    auto_load: true
+    hot_reload: false
+  
+  security:
+    encryption_enabled: false
+    api_key_required: false
+
+# 持久化存储配置
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 20Gi
+
+# 节点选择器
+nodeSelector: {}
+
+# 容忍度
+tolerations: []
+
+# 亲和性
+affinity: {}

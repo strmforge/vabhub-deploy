@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "media-renamer.fullname" . }}-config
+data:
+  app.name: "{{ .Values.config.app.name }}"
+  app.version: "{{ .Values.config.app.version }}"
+  app.debug: "{{ .Values.config.app.debug }}"
+  
+  database.host: "{{ .Values.config.database.host }}"
+  database.port: "{{ .Values.config.database.port }}"
+  database.name: "{{ .Values.config.database.name }}"
+  
+  redis.host: "{{ .Values.config.redis.host }}"
+  redis.port: "{{ .Values.config.redis.port }}"
+  redis.db: "{{ .Values.config.redis.db }}"
+  
+  web.host: "{{ .Values.config.web.host }}"
+  web.port: "{{ .Values.config.web.port }}"
+  web.debug: "{{ .Values.config.web.debug }}"
+  
+  pt.max_concurrent_downloads: "{{ .Values.config.pt.max_concurrent_downloads }}"
+  pt.download_path: "{{ .Values.config.pt.download_path }}"
+  pt.auto_cleanup: "{{ .Values.config.pt.auto_cleanup }}"
+  
+  ai.recognition_enabled: "{{ .Values.config.ai.recognition_enabled }}"
+  ai.search_enabled: "{{ .Values.config.ai.search_enabled }}"
+  ai.recommendation_enabled: "{{ .Values.config.ai.recommendation_enabled }}"
+  
+  workflow.auto_start: "{{ .Values.config.workflow.auto_start }}"
+  workflow.max_parallel: "{{ .Values.config.workflow.max_parallel }}"
+  
+  plugin.auto_load: "{{ .Values.config.plugin.auto_load }}"
+  plugin.hot_reload: "{{ .Values.config.plugin.hot_reload }}"
+  
+  security.encryption_enabled: "{{ .Values.config.security.encryption_enabled }}"
+  security.api_key_required: "{{ .Values.config.security.api_key_required }}"

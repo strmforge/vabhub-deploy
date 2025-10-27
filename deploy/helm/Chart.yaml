@@ -1,0 +1,22 @@
+apiVersion: v2
+name: media-renamer
+description: A Helm chart for MediaRenamer Enhanced
+
+type: application
+
+# Chart版本
+version: 2.0.0
+
+# App版本
+appVersion: "2.0.0"
+
+# 依赖
+# dependencies:
+# - name: postgresql
+#   version: "12.1.0"
+#   repository: "https://charts.bitnami.com/bitnami"
+#   condition: postgresql.enabled
+# - name: redis
+#   version: "17.3.0"
+#   repository: "https://charts.bitnami.com/bitnami"
+#   condition: redis.enabled
