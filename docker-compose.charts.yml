@@ -1,0 +1,101 @@
+# VabHub排行榜服务Docker Compose配置
+# 基于media-oneclick和MoviePilot的最佳实践
+
+version: '3.8'
+
+services:
+  # Redis缓存服务
+  redis-charts:
+    image: redis:7-alpine
+    container_name: vabhub-redis-charts
+    restart: unless-stopped
+    ports:
+      - "6390:6390"
+    volumes:
+      - redis_charts_data:/data
+      - ./config/redis.conf:/etc/redis/redis.conf
+    command: redis-server /etc/redis/redis.conf
+    networks:
+      - vabhub-network
+
+  # 排行榜API服务
+  vabhub-charts-api:
+    build:
+      context: ../VabHub-Core
+      dockerfile: Dockerfile.charts
+    container_name: vabhub-charts-api
+    restart: unless-stopped
+    ports:
+      - "6280:6280"
+    environment:
+      - REDIS_URL=redis://redis-charts:6379
+      - CONFIG_PATH=/app/config/charts_config.yaml
+      - LOG_LEVEL=INFO
+      - SPOTIFY_API_KEY=${SPOTIFY_API_KEY}
+      - NETEASE_COOKIE=${NETEASE_COOKIE}
+      - QQ_MUSIC_API_KEY=${QQ_MUSIC_API_KEY}
+      - APPLE_MUSIC_API_KEY=${APPLE_MUSIC_API_KEY}
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - DOUBAN_API_KEY=${DOUBAN_API_KEY}
+      - IMDB_API_KEY=${IMDB_API_KEY}
+      - MAOYAN_API_KEY=${MAOYAN_API_KEY}
+      - MYDRAMALIST_API_KEY=${MYDRAMALIST_API_KEY}
+      - VIKI_API_KEY=${VIKI_API_KEY}
+      - TVMAZE_API_KEY=${TVMAZE_API_KEY}
+      - TRAKT_API_KEY=${TRAKT_API_KEY}
+    volumes:
+      - ../VabHub-Resources/config/charts_config.yaml:/app/config/charts_config.yaml:ro
+      - charts_logs:/app/logs
+    depends_on:
+      - redis-charts
+    networks:
+      - vabhub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/charts/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 排行榜数据更新服务
+  vabhub-charts-updater:
+    build:
+      context: ../VabHub-Core
+      dockerfile: Dockerfile.charts
+    container_name: vabhub-charts-updater
+    restart: unless-stopped
+    environment:
+      - REDIS_URL=redis://redis-charts:6379
+      - CONFIG_PATH=/app/config/charts_config.yaml
+      - LOG_LEVEL=INFO
+      - UPDATE_INTERVAL=3600  # 1小时更新一次
+      - SPOTIFY_API_KEY=${SPOTIFY_API_KEY}
+      - NETEASE_COOKIE=${NETEASE_COOKIE}
+      - QQ_MUSIC_API_KEY=${QQ_MUSIC_API_KEY}
+      - APPLE_MUSIC_API_KEY=${APPLE_MUSIC_API_KEY}
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - DOUBAN_API_KEY=${DOUBAN_API_KEY}
+      - IMDB_API_KEY=${IMDB_API_KEY}
+      - MAOYAN_API_KEY=${MAOYAN_API_KEY}
+      - MYDRAMALIST_API_KEY=${MYDRAMALIST_API_KEY}
+      - VIKI_API_KEY=${VIKI_API_KEY}
+      - TVMAZE_API_KEY=${TVMAZE_API_KEY}
+      - TRAKT_API_KEY=${TRAKT_API_KEY}
+    volumes:
+      - ../VabHub-Resources/config/charts_config.yaml:/app/config/charts_config.yaml:ro
+      - charts_logs:/app/logs
+    depends_on:
+      - redis-charts
+    networks:
+      - vabhub-network
+    command: python -m app.charts_updater
+
+volumes:
+  redis_charts_data:
+    driver: local
+  charts_logs:
+    driver: local
+
+networks:
+  vabhub-network:
+    driver: bridge
+    external: true
