@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # 统一订阅管理器
+  unified-subscription:
+    image: wiserain/flexget
+    container_name: vabhub-unified-subscription
+    restart: unless-stopped
+    volumes:
+      - ./VabHub-Deploy/config/subscription:/config
+      - ./VabHub-Deploy/data/subscription:/data
+      - /media/downloads:/downloads
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+      - FG_WEBUI_PASSWD=${FLEXGET_PASSWORD}
+    ports:
+      - "3539:3539"
+    networks:
+      - vabhub-network
+
+  # 统一下载器
+  unified-downloader:
+    image: linuxserver/qbittorrent
+    container_name: vabhub-unified-downloader
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+      - WEBUI_PORT=8080
+    volumes:
+      - ./VabHub-Deploy/config/qbittorrent:/config
+      - /media/downloads:/downloads
+    ports:
+      - "8080:8080"
+    networks:
+      - vabhub-network
+
+  # 文件整理器
+  unified-organizer:
+    build:
+      context: ./VabHub-Core
+      dockerfile: Dockerfile.organizer
+    container_name: vabhub-unified-organizer
+    restart: unless-stopped
+    volumes:
+      - /media:/media
+      - ./VabHub-Deploy/config/organizer:/config
+    environment:
+      - PYTHONPATH=/app
+    networks:
+      - vabhub-network
+    depends_on:
+      - unified-downloader
+
+networks:
+  vabhub-network:
+    driver: bridge
+
+volumes:
+  media_data:
+    driver: local

@@ -1,314 +1,169 @@
 # VabHub-Deploy
 
-VabHub 部署配置和脚本，支持 Docker 容器化部署。
+VabHub-Deploy 是 VabHub 媒体管理系统的专业部署解决方案，提供完整的容器化部署、监控和运维支持。
 
-## 🚀 快速开始
+## 🎉 最新版本: 1.3.0
 
-### Docker 部署（推荐）
+**VabHub-Deploy 1.3.0** 是一个重大版本更新，带来了企业级的部署和运维能力。
+
+### 🚀 1.3.0 版本亮点
+- **多服务架构**: 后端、前端、数据库、缓存、监控分离部署
+- **健康检查**: 自动服务健康监控和重启
+- **监控告警**: Prometheus + Grafana 集成
+- **备份恢复**: 完整的备份和恢复机制
+
+## 🏗️ 部署架构
+
+### 📦 容器化部署
+- **Docker Compose**: 多服务编排管理
+- **多环境支持**: 开发、测试、生产环境
+- **资源管理**: CPU、内存资源限制
+- **网络配置**: 安全的网络隔离
+
+### 📊 监控系统
+- **Prometheus**: 系统指标收集和存储
+- **Grafana**: 可视化监控界面
+- **健康检查**: 服务健康状态监控
+- **告警规则**: 关键指标异常告警
+
+### 🔒 安全特性
+- **网络安全**: 网络隔离和防火墙规则
+- **访问控制**: 基于角色的访问控制
+- **数据加密**: 敏感数据加密存储
+- **漏洞扫描**: 定期安全扫描
+
+## 🚀 快速部署
+
+### 生产环境部署
 ```bash
-# 一键部署所有服务
-docker-compose up -d
+# 1. 克隆部署仓库
+git clone https://github.com/vabhub/vabhub-deploy.git
+cd vabhub-deploy
 
-# 查看服务状态
+# 2. 配置环境
+cp .env.production .env
+# 编辑环境变量
+
+# 3. 启动服务
+docker-compose -f docker-compose.enhanced.yml up -d
+
+# 4. 验证部署
 docker-compose ps
-
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
+curl http://localhost:8090/api/health
 ```
 
-### 多仓库部署
-```bash
-# 部署多仓库版本
-./scripts/deploy_multi_repo.sh init
-./scripts/deploy_multi_repo.sh start
-```
-
-### 手动部署
-```bash
-# 部署后端服务
-cd ../VabHub-Core
-pip install -r requirements.txt
-python start.py
-
-# 部署前端服务
-cd ../VabHub-Frontend
-npm install
-npm run build
-npm run preview
-```
+### 监控系统访问
+- **Grafana**: http://localhost:3000
+- **Prometheus**: http://localhost:9090
+- **前端界面**: http://localhost:8080
+- **API文档**: http://localhost:8090/docs
 
 ## 📁 项目结构
 
 ```
 VabHub-Deploy/
-├── docker/                 # Docker 配置
-│   ├── Dockerfile.core    # 后端镜像
-│   ├── Dockerfile.frontend # 前端镜像
-│   └── nginx.conf        # Nginx 配置
-├── scripts/               # 部署脚本
-│   ├── deploy_multi_repo.sh
-│   ├── deploy_single.sh
-│   └── backup.sh
-├── config/                # 配置文件模板
-│   ├── config.example.yaml
-│   └── nginx.conf.example
-├── docker-compose.yml     # 单仓库部署
-├── docker-compose.multi-repo.yml # 多仓库部署
-└── README.md
+├── docker-compose.enhanced.yml    # 增强版部署配置
+├── docker-compose.yml            # 基础部署配置
+├── docker/                        # Docker配置
+│   ├── Dockerfile.core           # 后端镜像
+│   └── Dockerfile.frontend      # 前端镜像
+├── scripts/                      # 部署脚本
+│   ├── deploy.sh                # 部署脚本
+│   └── backup.sh                # 备份脚本
+├── config/                       # 配置文件
+│   ├── prometheus.yml           # Prometheus配置
+│   └── grafana.ini              # Grafana配置
+└── .env.production              # 生产环境配置
 ```
 
 ## 🔧 部署配置
 
-### Docker Compose 配置
-
-**单仓库部署（开发环境）**
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  vabhub-core:
-    build: .
-    ports:
-      - "8090:8090"
-    volumes:
-      - ./config:/app/config
-      - ./data:/app/data
-    environment:
-      - VABHUB_ENV=production
-
-  vabhub-frontend:
-    build: ./frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - vabhub-core
-```
-
-**多仓库部署（生产环境）**
-```yaml
-# docker-compose.multi-repo.yml
-version: '3.8'
-services:
-  vabhub-core:
-    image: vabhub/vabhub-core:latest
-    ports:
-      - "8090:8090"
-    volumes:
-      - vabhub-config:/app/config
-      - vabhub-data:/app/data
-
-  vabhub-frontend:
-    image: vabhub/vabhub-frontend:latest
-    ports:
-      - "80:80"
-    depends_on:
-      - vabhub-core
-```
-
 ### 环境变量配置
-
-创建 `.env` 文件：
-```env
+```bash
 # 数据库配置
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=vabhub
-DB_USER=vabhub
-DB_PASSWORD=your_password
+POSTGRES_DB=vabhub
+POSTGRES_USER=vabhub
+POSTGRES_PASSWORD=your_password
 
-# Redis 配置
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your_password
+# Redis配置
+REDIS_PASSWORD=your_redis_password
 
-# 应用配置
-VABHUB_ENV=production
-SECRET_KEY=your_secret_key
-API_BASE_URL=http://localhost:8090
+# 服务端口
+VABHUB_PORT=8090
+FRONTEND_PORT=8080
+GRAFANA_PORT=3000
 ```
 
-## 🚀 部署脚本
-
-### 多仓库部署脚本
-```bash
-#!/bin/bash
-# scripts/deploy_multi_repo.sh
-
-case "$1" in
-  init)
-    echo "初始化多仓库部署..."
-    # 克隆所有仓库
-    git clone https://github.com/vabhub/vabhub-core.git
-    git clone https://github.com/vabhub/vabhub-frontend.git
-    git clone https://github.com/vabhub/vabhub-plugins.git
-    ;;
-  start)
-    echo "启动多仓库服务..."
-    docker-compose -f docker-compose.multi-repo.yml up -d
-    ;;
-  stop)
-    echo "停止多仓库服务..."
-    docker-compose -f docker-compose.multi-repo.yml down
-    ;;
-  *)
-    echo "用法: $0 {init|start|stop|restart|status}"
-    ;;
-esac
-```
-
-### 备份脚本
-```bash
-#!/bin/bash
-# scripts/backup.sh
-
-BACKUP_DIR="./backups"
-DATE=$(date +%Y%m%d_%H%M%S)
-
-mkdir -p "$BACKUP_DIR"
-
-# 备份数据库
-docker exec vabhub-db pg_dump -U vabhub vabhub > "$BACKUP_DIR/db_backup_$DATE.sql"
-
-# 备份配置文件
-cp -r config "$BACKUP_DIR/config_$DATE"
-
-# 备份数据文件
-tar -czf "$BACKUP_DIR/data_backup_$DATE.tar.gz" data/
-
-echo "备份完成: $BACKUP_DIR"
-```
-
-## 🔌 网络配置
-
-### 端口映射
-- **后端 API**: 8090
-- **前端界面**: 3000 (开发) / 80 (生产)
-- **数据库**: 5432
-- **Redis**: 6379
-
-### 反向代理配置（Nginx）
-```nginx
-# config/nginx.conf
-server {
-    listen 80;
-    server_name vabhub.example.com;
-
-    # 前端静态文件
-    location / {
-        proxy_pass http://vabhub-frontend:80;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    # 后端 API
-    location /api/ {
-        proxy_pass http://vabhub-core:8090;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-## 📊 监控和日志
-
-### 服务监控
-```bash
-# 查看容器状态
-docker-compose ps
-
-# 查看资源使用情况
-docker stats
-
-# 查看服务日志
-docker-compose logs -f vabhub-core
-```
-
-### 健康检查
+### 资源限制
 ```yaml
-# docker-compose.yml 中的健康检查
-healthcheck:
-  test: ["CMD", "curl", "-f", "http://localhost:8090/api/health"]
-  interval: 30s
-  timeout: 10s
-  retries: 3
-  start_period: 40s
+services:
+  vabhub-core:
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
 ```
 
-## 🔒 安全配置
+## 📈 运维管理
 
-### SSL/TLS 配置
-```nginx
-# SSL 配置
-server {
-    listen 443 ssl;
-    server_name vabhub.example.com;
-
-    ssl_certificate /etc/ssl/certs/vabhub.crt;
-    ssl_certificate_key /etc/ssl/private/vabhub.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-
-    # 其他配置...
-}
-```
-
-### 防火墙规则
+### 备份和恢复
 ```bash
-# 开放必要端口
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw allow 8090/tcp
+# 数据备份
+./scripts/backup.sh
 
-# 限制访问来源
-ufw allow from 192.168.1.0/24 to any port 22
+# 数据恢复
+./scripts/restore.sh backup_file.sql
 ```
+
+### 监控和告警
+- **系统指标**: CPU、内存、磁盘、网络使用率
+- **服务状态**: 各服务运行状态和健康检查
+- **性能指标**: API响应时间、数据库查询性能
+- **告警通知**: 邮件、Slack、Webhook通知
+
+### 日志管理
+- **集中日志**: 所有服务的日志收集
+- **日志轮转**: 自动日志轮转和清理
+- **日志查询**: 支持关键词搜索和时间范围查询
 
 ## 🔗 相关仓库
 
-- [VabHub-Core](https://github.com/vabhub/vabhub-core) - 后端核心服务
-- [VabHub-Frontend](https://github.com/vabhub/vabhub-frontend) - 前端界面
-- [VabHub-Plugins](https://github.com/vabhub/vabhub-plugins) - 插件系统
-- [VabHub-Resources](https://github.com/vabhub/vabhub-resources) - 资源文件
+- **后端服务**: [vabhub-core](https://github.com/vabhub/vabhub-core)
+- **前端界面**: [vabhub-frontend](https://github.com/vabhub/vabhub-frontend)
+- **插件系统**: [vabhub-plugins](https://github.com/vabhub/vabhub-plugins)
 
 ## 🤝 贡献指南
 
-欢迎提交部署配置和改进！
+欢迎参与 VabHub-Deploy 项目的开发！
 
-### 开发环境设置
-```bash
-# 1. Fork 仓库
-# 2. 克隆到本地
-git clone https://github.com/your-username/vabhub-deploy.git
+### 开发流程
+1. Fork 仓库
+2. 创建功能分支
+3. 提交代码更改
+4. 创建 Pull Request
 
-# 3. 创建开发分支
-git checkout -b feature/your-feature
-
-# 4. 测试部署配置
-./scripts/deploy_multi_repo.sh test
-
-# 5. 提交更改
-git commit -m "feat: add your feature"
-
-# 6. 推送到远程
-git push origin feature/your-feature
-
-# 7. 创建 Pull Request
-```
-
-### 部署规范
-- 使用 Docker 容器化部署
-- 提供开发和生产环境配置
-- 支持多仓库协作部署
-- 包含备份和恢复脚本
+### 部署测试
+- 测试多环境部署
+- 验证监控系统功能
+- 测试备份恢复流程
+- 性能压力测试
 
 ## 📄 许可证
 
 本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
 
-## 📞 支持
+## 📞 支持与交流
 
-- 文档: [VabHub Wiki](https://github.com/vabhub/vabhub-wiki)
-- 问题: [GitHub Issues](https://github.com/vabhub/vabhub-deploy/issues)
-- 讨论: [GitHub Discussions](https://github.com/vabhub/vabhub-deploy/discussions)
+- **文档**: [VabHub Wiki](https://github.com/vabhub/vabhub-wiki)
+- **问题**: [GitHub Issues](https://github.com/vabhub/vabhub-deploy/issues)
+- **讨论**: [GitHub Discussions](https://github.com/vabhub/vabhub-deploy/discussions)
+
+---
+
+**VabHub Deploy Team**  
+*专业级部署解决方案*  
+2025年10月28日

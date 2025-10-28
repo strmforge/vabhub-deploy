@@ -1,0 +1,39 @@
+name: Release VabHub-Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Create release package
+      run: |
+        mkdir -p dist
+        cp -r docker-compose.* dist/
+        cp -r scripts dist/
+        cp -r docker dist/
+        cp README.md dist/
+        cp CHANGELOG.md dist/
+        cp RELEASE_v1.3.0.md dist/
+        
+        # 创建压缩包
+        cd dist
+        zip -r "../vabhub-deploy-${GITHUB_REF_NAME}.zip" .
+        cd ..
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: vabhub-deploy-*.zip
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

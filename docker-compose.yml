@@ -1,107 +1,93 @@
 version: '3.8'
 
 services:
-  # 后端核心服务
-  vabhub-core:
-    build:
-      context: ../VabHub-Core
-      dockerfile: Dockerfile
-    container_name: vabhub-core
+  vabhub:
+    stdin_open: true
+    tty: true
+    container_name: vabhub
+    hostname: vabhub
     ports:
-      - "8090:8090"
+     - '3001:3001'  # 前端端口
+     - '3002:3002'  # 后端API端口
     volumes:
-      - ./config:/app/config
-      - ./data:/app/data
-      - ./logs:/app/logs
+      - '/media:/media'  # 媒体文件挂载
+      - '/vabhub/config:/config'  # 持久化配置（不包含API密钥）
+      - '/vabhub/data:/data'  # 应用数据
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'  # Docker管理权限
     environment:
-      - VABHUB_ENV=production
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=vabhub
-      - DB_USER=vabhub
-      - DB_PASSWORD=${DB_PASSWORD:-vabhub123}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      # 基础配置（不包含敏感信息）
+      - 'VABHUB_ENV=production'
+      - 'API_HOST=0.0.0.0'
+      - 'API_PORT=3002'
+      - 'FRONTEND_PORT=3001'
+      - 'PUID=0'
+      - 'PGID=0'
+      - 'UMASK=000'
+      - 'TZ=Asia/Shanghai'
+      
+      # 数据库配置
+      - 'DB_TYPE=postgresql'
+      - 'DB_POSTGRESQL_HOST=postgresql'
+      - 'DB_POSTGRESQL_PORT=5432'
+      - 'DB_POSTGRESQL_DATABASE=vabhub'
+      - 'DB_POSTGRESQL_USERNAME=vabhub'
+      - 'DB_POSTGRESQL_PASSWORD=${DB_PASSWORD:-vabhub123}'
+      
+      # Redis配置
+      - 'CACHE_BACKEND_TYPE=redis'
+      - 'CACHE_BACKEND_URL=redis://:${REDIS_PASSWORD:-redis123}@redis:6379'
+      
+      # 敏感API密钥通过环境变量注入（不在配置中硬编码）
+      - 'U115_APP_ID=${U115_APP_ID:-100197729}'
+      - 'U115_APP_KEY=${U115_APP_KEY:-d099625d59aba2a79e70b81fc4589b26}'
+      
+      # 管理员配置
+      - 'SUPERUSER=admin'
+      - 'SUPERUSER_PASSWORD=${ADMIN_PASSWORD:-admin123}'
+    
+    restart: always
     depends_on:
-      - postgres
-      - redis
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8090/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # 前端界面服务
-  vabhub-frontend:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    # 使用预编译的Docker镜像（API密钥硬编码但受编译保护）
+    image: vabhub/app:latest
     build:
-      context: ../VabHub-Frontend
+      context: .
       dockerfile: Dockerfile
-    container_name: vabhub-frontend
-    ports:
-      - "3000:80"
-    environment:
-      - VITE_API_BASE_URL=http://localhost:8090
-    depends_on:
-      - vabhub-core
-    restart: unless-stopped
 
-  # PostgreSQL 数据库
-  postgres:
-    image: postgres:15-alpine
-    container_name: vabhub-postgres
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=vabhub
-      - POSTGRES_USER=vabhub
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-vabhub123}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./initdb:/docker-entrypoint-initdb.d
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vabhub"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Redis 缓存
   redis:
-    image: redis:7-alpine
     container_name: vabhub-redis
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
     volumes:
-      - redis_data:/data
-    restart: unless-stopped
+      - '/vabhub/redis/data:/data'
+    image: redis:7-alpine
+    command: redis-server --save 600 1 --requirepass ${REDIS_PASSWORD:-redis123}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
 
-  # Nginx 反向代理（可选）
-  nginx:
-    image: nginx:alpine
-    container_name: vabhub-nginx
-    ports:
-      - "80:80"
-      - "443:443"
+  postgresql:
+    container_name: vabhub-postgres
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: vabhub
+      POSTGRES_USER: vabhub
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vabhub123}
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/ssl/certs
-    depends_on:
-      - vabhub-core
-      - vabhub-frontend
-    restart: unless-stopped
+      - '/vabhub/postgresql/data:/var/lib/postgresql/data'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vabhub -d vabhub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-volumes:
-  postgres_data:
-  redis_data:
-
+# 网络配置
 networks:
   default:
     name: vabhub-network

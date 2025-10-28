@@ -1,0 +1,8 @@
+2025-10-28 10:27:19,640 - vabhub - INFO - log.py:146 - 注册事件处理器: system.startup -> handle_system_startup
+2025-10-28 10:27:19,641 - vabhub - INFO - log.py:146 - 注册事件处理器: media.added -> handle_media_added
+2025-10-28 10:27:19,641 - vabhub - INFO - log.py:146 - 注册事件处理器: config.changed -> handle_config_changed
+2025-10-28 10:27:19,648 - vabhub - INFO - log.py:146 - 插件管理器初始化完成
+2025-10-28 10:27:51,566 - vabhub - INFO - log.py:146 - 注册事件处理器: system.startup -> handle_system_startup
+2025-10-28 10:27:51,567 - vabhub - INFO - log.py:146 - 注册事件处理器: media.added -> handle_media_added
+2025-10-28 10:27:51,567 - vabhub - INFO - log.py:146 - 注册事件处理器: config.changed -> handle_config_changed
+2025-10-28 10:27:51,583 - vabhub - INFO - log.py:146 - 插件管理器初始化完成
