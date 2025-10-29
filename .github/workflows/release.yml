@@ -23,7 +23,7 @@ jobs:
         cp -r docker dist/
         cp README.md dist/
         cp CHANGELOG.md dist/
-        cp RELEASE_v1.3.0.md dist/
+        cp RELEASE_v1.1.0.md dist/
         
         # 创建压缩包
         cd dist
