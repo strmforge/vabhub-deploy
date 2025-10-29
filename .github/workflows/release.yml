@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+# 设置权限
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -23,7 +27,7 @@ jobs:
         cp -r docker dist/
         cp README.md dist/
         cp CHANGELOG.md dist/
-        cp RELEASE_v1.1.0.md dist/
+        cp RELEASE_v1.4.0.md dist/
         
         # 创建压缩包
         cd dist
@@ -35,5 +39,7 @@ jobs:
       with:
         files: vabhub-deploy-*.zip
         generate_release_notes: true
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
