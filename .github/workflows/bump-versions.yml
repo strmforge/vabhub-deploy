@@ -1,0 +1,67 @@
+name: bump-versions
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'   # 每天 03:17 UTC
+  repository_dispatch:
+    types: [bump-versions]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    env:
+      ORG: strmforge
+      CORE_REPO: vabhub-Core
+      FRONTEND_REPO: vabhub-frontend
+      BRANCH: main
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve latest tags
+        id: tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          CORE=$(gh api repos/${ORG}/${CORE_REPO}/releases/latest -q .tag_name || echo "v0.1.0")
+          FE=$(gh api repos/${ORG}/${FRONTEND_REPO}/releases/latest -q .tag_name || echo "v0.1.0")
+          echo "core_tag=$CORE" >> $GITHUB_OUTPUT
+          echo "fe_tag=$FE" >> $GITHUB_OUTPUT
+          echo "core=$CORE"
+          echo "frontend=$FE"
+
+      - name: Update versions.json
+        run: |
+          set -e
+          CORE="${{ steps.tags.outputs.core_tag }}"
+          FE="${{ steps.tags.outputs.fe_tag }}"
+          if [ ! -f versions.json ]; then
+            echo '{"release":"0.1.0","core":"0.1.0","frontend":"0.1.0","plugins":{}}' > versions.json
+          fi
+          jq --arg core "$CORE" --arg fe "$FE"              '.core = $core | .frontend = $fe | .release = ($core|sub("^v";""))'              versions.json > versions.json.new
+          mv versions.json.new versions.json
+          echo "Result:"
+          cat versions.json
+
+      - name: Create PR if changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          if git diff --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+          BR="bump/versions-$(date +%Y%m%d-%H%M%S)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BR"
+          git add versions.json
+          git commit -m "chore(deploy): bump versions.json (core=${{ steps.tags.outputs.core_tag }}, fe=${{ steps.tags.outputs.fe_tag }})"
+          git push origin "$BR"
+          gh pr create --title "chore: bump versions.json" --body "Update versions.json to latest Core/Frontend tags." --base "$BRANCH" || true
